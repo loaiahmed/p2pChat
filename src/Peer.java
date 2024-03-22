@@ -86,18 +86,24 @@ public class Peer {     // encryption missing, private messaging missing.
     }
     public void leave() throws IOException{
         //cooridnator please i wanna leave;
-        Message msg = new Message(this, "exit");
-        Socket coordSocket = new Socket("localhost", Coordinator.DEFAULT_PORT);
-        ObjectOutputStream out = new ObjectOutputStream(coordSocket.getOutputStream());
-        DataInputStream in = new DataInputStream(coordSocket.getInputStream());
-        out.writeObject(msg);
+        try {
+            Message msg = new Message(this, "exit");
+            Socket coordSocket = new Socket("localhost", Coordinator.DEFAULT_PORT);
+            ObjectOutputStream out = new ObjectOutputStream(coordSocket.getOutputStream());
+            DataInputStream in = new DataInputStream(coordSocket.getInputStream());
+            out.writeObject(msg);
 
-        String response = in.readUTF();
-        if(response.equals("UNREGISTERED")){
-            System.out.println("unregistered successfully");
-        }
-        else{
-            System.out.println("Unregister failed : " + response);
+            String response = in.readUTF();
+            if (response.equals("UNREGISTERED")) {
+                System.out.println("unregistered successfully");
+            } else {
+                System.out.println("Unregister failed : " + response);
+            }
+            coordSocket.close();
+            out.close();
+            in.close();
+        }catch(Exception e){
+            e.printStackTrace();
         }
     }
 
@@ -114,12 +120,14 @@ public class Peer {     // encryption missing, private messaging missing.
         ObjectOutputStream out = new ObjectOutputStream(targetSocket.getOutputStream());
         out.writeObject(msg);
         targetSocket.close();
+        out.close();
     }
     private void relayMessage(Message message) throws IOException {
         Socket targetSocket = new Socket(targetHost, targetPort);
         ObjectOutputStream out = new ObjectOutputStream(targetSocket.getOutputStream());
         out.writeObject(message);
         targetSocket.close();
+        out.close();
     }
 
     private class ClientHandler implements Runnable {
@@ -149,7 +157,8 @@ public class Peer {     // encryption missing, private messaging missing.
                 }
                 // Send a response message
                 out.writeUTF("Thanks for the message!");
-
+                out.close();
+                in.close();
             } catch (IOException e) {
                 System.out.println(e);
             } catch (ClassNotFoundException e) {
