@@ -8,37 +8,42 @@ import java.util.*;
 public class Coordinator{
     public static final int DEFAULT_PORT = 8080;
     private ServerSocket serverSocket;
-    LinkedList<Peer> peers;
-    public static int portCount = 10;
+    private LinkedList<Peer> peers;
+    public static int portCount = 0;
 
     public Coordinator(){
         peers = new LinkedList<Peer>();
     }
-    public void registerPeer(){     // port number is automatically assigned
+
+    public LinkedList<Peer> getPeers() {
+        return peers;
+    }
+    public Peer registerPeer(){     // port number is automatically assigned
+        portCount+=10;
         if(peers.isEmpty()){
             Peer peer = new Peer(DEFAULT_PORT+portCount);
             peers.add(peer);
+            return peer;
         }
-        else {
-            // connects the new peer with first peer in hashmap and last peer connects to new peer
-            // and new peer becomes new last peer in Linkedlist
-            Peer beforePeer = peers.getLast();
-            Peer afterPeer = peers.getFirst();
-            Peer peer = new Peer(DEFAULT_PORT+portCount, "localhost", afterPeer.getPort());
-            beforePeer.setTarget("localhost", peer.getPort());
-            peers.add(peer);
-        }
-        portCount+=10;
+        // connects the new peer with first peer in hashmap and last peer connects to new peer
+        // and new peer becomes new last peer in Linkedlist
+        Peer beforePeer = peers.getLast();
+        Peer afterPeer = peers.getFirst();
+        Peer peer = new Peer(DEFAULT_PORT+portCount, "localhost", afterPeer.getPort());
+        beforePeer.setTarget("localhost", peer.getPort());
+        peers.add(peer);
+        return peer;
     }
     public String unregisterPeer(Peer peer){
         int indexOfPeer = peers.indexOf(peer);
         if(indexOfPeer == -1){
             return "FAILED: couldn't find peer to be deleted";
         }
-        peers.remove(indexOfPeer);
         Peer beforePeer = peers.get(indexOfPeer-1);
         Peer afterPeer = peers.get((indexOfPeer+1));
-        beforePeer.setTarget(afterPeer.getTargetHost(), afterPeer.getTargetPort());
+        beforePeer.setTarget("localhost", afterPeer.getPort());
+        peers.remove(indexOfPeer);
+        peer.setTarget(null, -1);
         return "UNREGISTERED";
     }
     public void start() throws IOException {
@@ -67,13 +72,21 @@ public class Coordinator{
             try {
                 Socket peerSocket = new Socket(peer.getTargetHost(), peer.getTargetPort());
                 ObjectOutputStream out = new ObjectOutputStream(peerSocket.getOutputStream());
-                out.writeUTF(message);
+                out.writeObject(message);
                 peerSocket.close();
                 out.close();
             } catch (IOException e) {
                 System.err.println("Error sending message to peer " + peer + ": " + e.getMessage());
             }
         }
+    }
+    public Peer findPeerByID(int id){
+        for(Peer peer : peers){
+            if(peer.getId() == id){
+                return peer;
+            }
+        }
+        return null;
     }
     private class PeerHandler implements Runnable {
 
@@ -93,11 +106,11 @@ public class Coordinator{
 
                 // Read incoming message
                 Message msg = (Message) in.readObject();
-                System.out.println(msg.getOriginPeer().getId() + ": " + msg.getMsg());
+                System.out.println(msg.getOriginPeerID() + ": " + msg.getMsg());
 
                 if (msg.getMsg().equals("exit")) {
-                    out.writeUTF(unregisterPeer(msg.getOriginPeer()));
-                    broadcastMessage(msg.getOriginPeer().getId() + ": has left the ring");
+                    out.writeObject(unregisterPeer(findPeerByID(msg.getOriginPeerID())));
+                    broadcastMessage(msg.getOriginPeerID() + ": has left the ring");
                 }
                 out.close();
                 in.close();

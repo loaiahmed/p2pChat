@@ -1,14 +1,16 @@
 import java.io.*;
 import java.net.*;
+import java.util.LinkedList;
 
 
-public class Peer {     // encryption missing, private messaging missing.
+public class Peer implements Serializable{     // encryption missing, private messaging missing.
     private int id;
     private ServerSocket serverSocket;
     private int port;
     private volatile String targetHost;
     private volatile int targetPort;
     public static int count = 1;
+    private PeerUI peerUI;
 
     public Peer(int port, String targetHost, int targetPort) {
         this.port = port;
@@ -21,6 +23,13 @@ public class Peer {     // encryption missing, private messaging missing.
         this.port = port;
         this.id = count;
         count++;
+    }
+
+    public PeerUI getPeerUI() {
+        return peerUI;
+    }
+    public void setPeerUI(PeerUI peerUI){
+        this.peerUI = peerUI;
     }
     public int getId(){ return id;}
 
@@ -59,45 +68,25 @@ public class Peer {     // encryption missing, private messaging missing.
                 }
             }
         }).start();
-        // Thread to handle sending messages to target peer
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                while (true) {
-                    try {
-                        String message = getUserInput();
-                        if (message.equalsIgnoreCase("exit")) {
-                            leave();    //leave ring
-                            return;
-                        }
-                        // Send user-entered message directly (if target is set)
-                        if (targetHost != null && targetPort > 0) {
-                            sendMessage(message);
-                        } else {
-                            System.out.println("No target assigned");
-                        }
-                    } catch (IOException e) {
-                        System.out.println(e.getMessage());
-                        break;
-                    }
-                }
-            }
-        }).start();
     }
-    public void leave() throws IOException{
+    public boolean leave() throws IOException{
         //cooridnator please i wanna leave;
+        boolean result = false;
         try {
-            Message msg = new Message(this, "exit");
+            Message msg = new Message(this.id, "exit");
             Socket coordSocket = new Socket("localhost", Coordinator.DEFAULT_PORT);
             ObjectOutputStream out = new ObjectOutputStream(coordSocket.getOutputStream());
-            DataInputStream in = new DataInputStream(coordSocket.getInputStream());
+            ObjectInputStream in = new ObjectInputStream(coordSocket.getInputStream());
             out.writeObject(msg);
 
-            String response = in.readUTF();
+            String response = (String) in.readObject();
             if (response.equals("UNREGISTERED")) {
                 System.out.println("unregistered successfully");
+                peerUI.appendToTextArea("unregistered successfully\n");
+                result = true;
             } else {
                 System.out.println("Unregister failed : " + response);
+                peerUI.appendToTextArea("unregister failed : " + response + "\n");
             }
             coordSocket.close();
             out.close();
@@ -105,6 +94,7 @@ public class Peer {     // encryption missing, private messaging missing.
         }catch(Exception e){
             e.printStackTrace();
         }
+        return result;
     }
 
     private String getUserInput() throws IOException {
@@ -113,16 +103,16 @@ public class Peer {     // encryption missing, private messaging missing.
         return reader.readLine();
     }
 
-    private void sendMessage(String message) throws IOException {
+    public void sendMessage(String  message) throws IOException {
 
-        Message msg = new Message(this, message);
+        Message msg = new Message(this.id, message);
         Socket targetSocket = new Socket(targetHost, targetPort);
         ObjectOutputStream out = new ObjectOutputStream(targetSocket.getOutputStream());
         out.writeObject(msg);
         targetSocket.close();
         out.close();
     }
-    private void relayMessage(Message message) throws IOException {
+    public void relayMessage(Message message) throws IOException {
         Socket targetSocket = new Socket(targetHost, targetPort);
         ObjectOutputStream out = new ObjectOutputStream(targetSocket.getOutputStream());
         out.writeObject(message);
@@ -147,16 +137,19 @@ public class Peer {     // encryption missing, private messaging missing.
                 ObjectInputStream in = new ObjectInputStream(cSocket.getInputStream());
 
                 // Read incoming message
-                Message msg = (Message) in.readObject();
-                System.out.println(msg.getOriginPeer().getId() + ": " + msg.getMsg());
-
-                if (targetHost != null && targetPort > 0 && !msg.getMsg().startsWith(id + ": ")) {
-                    relayMessage(msg);
-                } else if (msg.getMsg().startsWith(id + ": ")) {
-                    System.out.println("Ignoring message originated from self.");
+                Object msg1 = in.readObject();
+                if(msg1 instanceof String){
+                    peerUI.appendToTextArea((String) msg1);
                 }
-                // Send a response message
-                out.writeUTF("Thanks for the message!");
+                else if(msg1 instanceof Message msg) {
+                    System.out.println(msg.getOriginPeerID() + ": " + msg.getMsg());
+                    if (msg.getOriginPeerID() == id) {
+                        System.out.println("Ignoring message originated from self.");
+                    } else if (targetHost != null && targetPort > 0 && !msg.getMsg().startsWith(id + ": ")) {
+                        relayMessage(msg);
+                        peerUI.appendToTextArea(msg.getMsg() + "\n");
+                    }
+                }
                 out.close();
                 in.close();
             } catch (IOException e) {
@@ -172,13 +165,4 @@ public class Peer {     // encryption missing, private messaging missing.
             }
         }
     }
-//    public void main(String[] args) throws Exception {
-//        // Replace with your desired port number and target peer details
-//        int port = 8080;
-//        String targetHost = "localhost";
-//        int targetPort = 8081;
-//
-//        Peer peer = new Peer(port, targetHost, targetPort);
-//        peer.start();
-//    }
 }
