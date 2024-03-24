@@ -1,4 +1,4 @@
-import java.io.DataOutputStream;
+
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -13,7 +13,7 @@ public class Coordinator{
     private static int coordId = 0;
 
     public Coordinator(){
-        peers = new LinkedList<Peer>();
+        peers = new LinkedList<>();
     }
 
     public LinkedList<Peer> getPeers() {
@@ -63,16 +63,13 @@ public class Coordinator{
         System.out.println("Coordinator started on port: " + Coordinator.DEFAULT_PORT);
 
         // Continuously listen for incoming connections
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                while (true) {
-                    try {
-                        Socket peerSocket = serverSocket.accept();
-                        new Thread(new Coordinator.PeerHandler(peerSocket)).start();
-                    } catch (IOException e) {
-                        System.out.println(e.getMessage());
-                    }
+        new Thread(() -> {
+            while (true) {
+                try {
+                    Socket peerSocket = serverSocket.accept();
+                    new Thread(new PeerHandler(peerSocket)).start();
+                } catch (IOException e) {
+                    System.out.println(e.getMessage());
                 }
             }
         }).start();
@@ -134,14 +131,14 @@ public class Coordinator{
                 out.close();
                 in.close();
             } catch (IOException e) {
-                System.out.println(e);
+                e.printStackTrace();
             } catch (ClassNotFoundException e) {
                 throw new RuntimeException(e);
             } finally {
                 try {
                     cSocket.close();
                 } catch (IOException e) {
-                    System.out.println(e);
+                    e.printStackTrace();
                 }
             }
         }

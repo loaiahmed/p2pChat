@@ -1,14 +1,12 @@
 import java.io.*;
 import java.net.*;
 import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.Objects;
 
 
 public class Peer implements Serializable{     // encryption missing, private messaging missing.
-    private int id;
+    private final int id;
     private ServerSocket serverSocket;
-    private int port;
+    private final int port;
     private volatile String targetHost;
     private volatile int targetPort;
     public static int count = 1;
@@ -28,9 +26,6 @@ public class Peer implements Serializable{     // encryption missing, private me
         count++;
     }
 
-    public PeerUI getPeerUI() {
-        return peerUI;
-    }
     public void setPeerUI(PeerUI peerUI){
         this.peerUI = peerUI;
     }
@@ -99,31 +94,6 @@ public class Peer implements Serializable{     // encryption missing, private me
         }
         return result;
     }
-
-    private String getUserInput() throws IOException {
-        System.out.println("Enter message to send (type 'exit' without quotes to exit): ");
-        BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
-        return reader.readLine();
-    }
-
-    public void sendMessage(String  message) throws IOException {
-
-        Message msg = new Message(this.id, message);
-        Socket targetSocket = new Socket(targetHost, targetPort);
-        ObjectOutputStream out = new ObjectOutputStream(targetSocket.getOutputStream());
-        out.writeObject(msg);
-        targetSocket.close();
-        out.close();
-    }
-    public void sendPrivateMessage(String  message, int password) throws IOException {
-
-        Message msg = new Message(this.id, message, password);
-        Socket targetSocket = new Socket(targetHost, targetPort);
-        ObjectOutputStream out = new ObjectOutputStream(targetSocket.getOutputStream());
-        out.writeObject(msg);
-        targetSocket.close();
-        out.close();
-    }
     private Message decryptMessage(Message msg){
         if(msg.getPassword() - id != 0){
             return null;
@@ -159,7 +129,7 @@ public class Peer implements Serializable{     // encryption missing, private me
                 // Read incoming message
                 Message msg = (Message) in.readObject();
                 if(msg.getOriginPeerID() == 0){
-                    peerUI.appendToTextArea((String) msg.getMsg());
+                    peerUI.appendToTextArea(msg.getMsg());
                     Peer.peerIds = (ArrayList<Integer>) msg.getExtra();
                     System.out.println(Peer.peerIds.get(0));
                     peerUI.setComboBox1WithArrayList(Peer.peerIds);
@@ -184,14 +154,14 @@ public class Peer implements Serializable{     // encryption missing, private me
                 out.close();
                 in.close();
             } catch (IOException e) {
-                System.out.println(e);
+                e.printStackTrace();
             } catch (ClassNotFoundException e) {
                 throw new RuntimeException(e);
             } finally {
                 try {
                     cSocket.close();
                 } catch (IOException e) {
-                    System.out.println(e);
+                    e.printStackTrace();
                 }
             }
         }

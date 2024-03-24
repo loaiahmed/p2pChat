@@ -39,7 +39,7 @@ public class PeerUI extends JFrame{
                             Object selectedItem = comboBox1.getSelectedItem();
                             if(selectedItem != "public"){
                                 peer.relayMessage(new Message(peer.getId(), text, (int)selectedItem));
-                                textArea1.append(peer.getId() + ": " + "(whisper) "+ (int)selectedItem + ": " + text +"\n");
+                                textArea1.append(peer.getId() + ": " + "(whisper) "+ selectedItem + ": " + text +"\n");
                             }
                             else {
                                 peer.relayMessage(new Message(peer.getId(), text));

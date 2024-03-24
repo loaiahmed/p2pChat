@@ -22,14 +22,10 @@ public class Message implements Serializable {
         this.originPeerID = originPeerID;
         this.msg = msg;
         this.extra = extra;
-        this.password = password;
+        this.password = -1;
     }
     public Object getExtra() {
         return extra;
-    }
-
-    public void setExtra(Object extra) {
-        this.extra = extra;
     }
 
     public String getMsg(){
