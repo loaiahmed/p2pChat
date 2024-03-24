@@ -20,7 +20,7 @@ public class CoordinatorUI extends JFrame{
         this.setContentPane(rootPanel);
         this.setSize(550, 600);
 //        this.pack();
-        this.setTitle("Head UI");
+        this.setTitle("CoordinatorUI");
         this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         this.setVisible(true);
 

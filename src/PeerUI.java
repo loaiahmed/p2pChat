@@ -24,6 +24,9 @@ public class PeerUI extends JFrame{
         this.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         this.setVisible(true);
 
+        textArea1.setEditable(false);
+        textArea1.setLineWrap(true);
+
         sendMessegeButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
