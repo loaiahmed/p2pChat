@@ -2,6 +2,7 @@ import javax.swing.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.IOException;
+import java.util.ArrayList;
 
 public class PeerUI extends JFrame{
     private JTextArea textArea1;
@@ -35,8 +36,15 @@ public class PeerUI extends JFrame{
                             }
                         }
                         else if(peer.getTargetHost() != null && peer.getTargetPort() > 0){
-                            peer.relayMessage(new Message(peer.getId(), peer.getId() + ": "+ text));
-                            textArea1.append(peer.getId() + ": " + text +"\n");
+                            Object selectedItem = comboBox1.getSelectedItem();
+                            if(selectedItem != "public"){
+                                peer.relayMessage(new Message(peer.getId(), text, (int)selectedItem));
+                                textArea1.append(peer.getId() + ": " + "(whisper) "+ (int)selectedItem + ": " + text +"\n");
+                            }
+                            else {
+                                peer.relayMessage(new Message(peer.getId(), text));
+                                textArea1.append(peer.getId() + ": " + text + "\n");
+                            }
                         }
                         else{
                             JOptionPane.showMessageDialog(rootPanel, "Error 2: " + "no target assigned", "Error", JOptionPane.ERROR_MESSAGE);
@@ -51,5 +59,12 @@ public class PeerUI extends JFrame{
     }
     public void appendToTextArea(String text){
         textArea1.append(text);
+    }
+    public void setComboBox1WithArrayList(ArrayList<Integer> arr){
+        comboBox1.removeAllItems();
+        comboBox1.addItem("public");
+        for(Integer item : arr){
+            comboBox1.addItem(item);
+        }
     }
 }

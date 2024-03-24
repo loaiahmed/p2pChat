@@ -10,6 +10,7 @@ public class Coordinator{
     private ServerSocket serverSocket;
     private LinkedList<Peer> peers;
     public static int portCount = 0;
+    private static int coordId = 0;
 
     public Coordinator(){
         peers = new LinkedList<Peer>();
@@ -34,16 +35,27 @@ public class Coordinator{
         peers.add(peer);
         return peer;
     }
-    public String unregisterPeer(Peer peer){
+    public String unregisterPeer(Peer peer) {
         int indexOfPeer = peers.indexOf(peer);
-        if(indexOfPeer == -1){
+        if (indexOfPeer == -1) {
             return "FAILED: couldn't find peer to be deleted";
         }
-        Peer beforePeer = peers.get(indexOfPeer-1);
-        Peer afterPeer = peers.get((indexOfPeer+1));
-        beforePeer.setTarget("localhost", afterPeer.getPort());
+
+        Peer previousPeer = null;
+        Peer nextPeer = null;
+        if (indexOfPeer > 0) {
+            previousPeer = peers.get(indexOfPeer - 1);
+        }
+        if (indexOfPeer < peers.size() - 1) {
+            nextPeer = peers.get(indexOfPeer + 1);
+        }
+        if (previousPeer != null) {
+            previousPeer.setTarget("localhost", nextPeer != null ? nextPeer.getPort() : peers.get(0).getPort());
+        }
+
         peers.remove(indexOfPeer);
         peer.setTarget(null, -1);
+
         return "UNREGISTERED";
     }
     public void start() throws IOException {
@@ -72,13 +84,20 @@ public class Coordinator{
             try {
                 Socket peerSocket = new Socket(peer.getTargetHost(), peer.getTargetPort());
                 ObjectOutputStream out = new ObjectOutputStream(peerSocket.getOutputStream());
-                out.writeObject(message);
+                out.writeObject(new Message(coordId, message, savePeersIds(peers)));
                 peerSocket.close();
                 out.close();
             } catch (IOException e) {
                 System.err.println("Error sending message to peer " + peer + ": " + e.getMessage());
             }
         }
+    }
+    public ArrayList<Integer> savePeersIds(LinkedList<Peer> peers){
+        ArrayList<Integer> arr = new ArrayList<>();
+        for (Peer peer : peers){
+            arr.add(peer.getId());
+        }
+        return arr;
     }
     public Peer findPeerByID(int id){
         for(Peer peer : peers){
@@ -106,9 +125,9 @@ public class Coordinator{
 
                 // Read incoming message
                 Message msg = (Message) in.readObject();
-                System.out.println(msg.getOriginPeerID() + ": " + msg.getMsg());
+                System.out.println(msg.getMsg());
 
-                if (msg.getMsg().equals("exit")) {
+                if (msg.getMsg().substring(3).equals("exit")) { // 1: message
                     out.writeObject(unregisterPeer(findPeerByID(msg.getOriginPeerID())));
                     broadcastMessage(msg.getOriginPeerID() + ": has left the ring");
                 }

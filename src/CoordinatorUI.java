@@ -38,6 +38,7 @@ public class CoordinatorUI extends JFrame{
                 } catch (IOException ex) {
                     throw new RuntimeException(ex);
                 }
+                updateTable();
             }
         });
         unregisterPeerButton.addActionListener(new ActionListener() {
@@ -51,22 +52,26 @@ public class CoordinatorUI extends JFrame{
                     Peer peer = (Peer) getTableIndex(4, table1.getSelectedRow());
                     coordinator.unregisterPeer(peer);
                     try {
-                        coordinator.broadcastMessage("coord: peer num " + peer.getId() + " has left the chat\n");
+                        coordinator.broadcastMessage(peer.getId() + ": "+ " has left the ring\n");
                     } catch (IOException ex) {
                         throw new RuntimeException(ex);
                     }
                     JOptionPane.showMessageDialog(rootPanel, "Unregistered Peer", "Notify", JOptionPane.INFORMATION_MESSAGE);
                 }
+                updateTable();
             }
         });
         updateButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                clearTable();
-                createTable();
-                numOfPeersLabel.setText("num of peers in ring: " + coordinator.getPeers().size());
+                updateTable();
             }
         });
+    }
+    public void updateTable(){
+        clearTable();
+        createTable();
+        numOfPeersLabel.setText("num of peers in ring: " + coordinator.getPeers().size());
     }
     public Object getTableIndex(int x, int y){
         DefaultTableModel model = (DefaultTableModel) table1.getModel();

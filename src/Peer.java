@@ -1,6 +1,8 @@
 import java.io.*;
 import java.net.*;
+import java.util.ArrayList;
 import java.util.LinkedList;
+import java.util.Objects;
 
 
 public class Peer implements Serializable{     // encryption missing, private messaging missing.
@@ -11,6 +13,7 @@ public class Peer implements Serializable{     // encryption missing, private me
     private volatile int targetPort;
     public static int count = 1;
     private PeerUI peerUI;
+    public static ArrayList<Integer> peerIds;
 
     public Peer(int port, String targetHost, int targetPort) {
         this.port = port;
@@ -112,6 +115,23 @@ public class Peer implements Serializable{     // encryption missing, private me
         targetSocket.close();
         out.close();
     }
+    public void sendPrivateMessage(String  message, int password) throws IOException {
+
+        Message msg = new Message(this.id, message, password);
+        Socket targetSocket = new Socket(targetHost, targetPort);
+        ObjectOutputStream out = new ObjectOutputStream(targetSocket.getOutputStream());
+        out.writeObject(msg);
+        targetSocket.close();
+        out.close();
+    }
+    private Message decryptMessage(Message msg){
+        if(msg.getPassword() - id != 0){
+            return null;
+        }
+        msg.setPassword(0);
+        return msg;
+    }
+
     public void relayMessage(Message message) throws IOException {
         Socket targetSocket = new Socket(targetHost, targetPort);
         ObjectOutputStream out = new ObjectOutputStream(targetSocket.getOutputStream());
@@ -137,17 +157,28 @@ public class Peer implements Serializable{     // encryption missing, private me
                 ObjectInputStream in = new ObjectInputStream(cSocket.getInputStream());
 
                 // Read incoming message
-                Object msg1 = in.readObject();
-                if(msg1 instanceof String){
-                    peerUI.appendToTextArea((String) msg1);
+                Message msg = (Message) in.readObject();
+                if(msg.getOriginPeerID() == 0){
+                    peerUI.appendToTextArea((String) msg.getMsg());
+                    Peer.peerIds = (ArrayList<Integer>) msg.getExtra();
+                    System.out.println(Peer.peerIds.get(0));
+                    peerUI.setComboBox1WithArrayList(Peer.peerIds);
                 }
-                else if(msg1 instanceof Message msg) {
-                    System.out.println(msg.getOriginPeerID() + ": " + msg.getMsg());
+                else if(msg.getOriginPeerID() != 0) {
+                    System.out.println(id + ": "+ msg.getOriginPeerID()+": "+msg.getMsg());
                     if (msg.getOriginPeerID() == id) {
                         System.out.println("Ignoring message originated from self.");
-                    } else if (targetHost != null && targetPort > 0 && !msg.getMsg().startsWith(id + ": ")) {
+                    }
+                    else if (msg.getPassword() != -1) {
+                        if(decryptMessage(msg) == null){
+                            relayMessage(msg);
+                        }else {
+                            peerUI.appendToTextArea(msg.getOriginPeerID() + ": "+ msg.getMsg() + "\n");
+                        }
+                    }
+                    else if (targetHost != null && targetPort > 0) {
                         relayMessage(msg);
-                        peerUI.appendToTextArea(msg.getMsg() + "\n");
+                        peerUI.appendToTextArea(msg.getOriginPeerID() + ": "+ msg.getMsg() + "\n");
                     }
                 }
                 out.close();
